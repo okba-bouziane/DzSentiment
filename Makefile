@@ -10,8 +10,9 @@ xlmr:        ; $(MPS_LIMITS) $(PY) scripts/train.py --model FacebookAI/xlm-rober
 dziribert:   ; $(MPS_LIMITS) $(PY) scripts/train.py --model alger-ia/dziribert --name dziribert
 evaluate:    ; $(PY) scripts/evaluate.py
 latency:     ; $(PY) scripts/latency.py
+export:      ; $(PY) scripts/export_onnx.py
 report:      ; $(PY) scripts/report.py
 test:        ; $(PY) -m pytest -q
 demo:        ; MODEL_DIR=models/xlmr-base $(PY) -m uvicorn app.main:app --port 7860
 
-.PHONY: data tfidf zeroshot xlmr dziribert evaluate latency report test demo
+.PHONY: data tfidf zeroshot xlmr dziribert evaluate latency export report test demo

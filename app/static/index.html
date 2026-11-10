@@ -48,6 +48,7 @@
   .link:hover { text-decoration-color: currentColor; }
   .count { margin-left: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
   .error { color: var(--neg); margin: 12px 0 0; }
+  .status { color: var(--muted); font-size: 13px; margin: 12px 0 0; min-height: 1.2em; }
 
   #results { margin-top: 40px; }
   .results-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
@@ -102,6 +103,7 @@
     <button class="link" id="examples">Use sample comments</button>
     <span class="count" id="count">0 of 50 lines</span>
   </div>
+  <p class="status" id="status"></p>
   <p class="error" id="error" hidden></p>
 
   <section id="results" hidden>
@@ -121,11 +123,11 @@
 <footer>
   <div class="wrap">
     <p>Model: XLM-RoBERTa base, fine-tuned on 45,516 labelled comments and tweets. Mean macro-F1 across the four languages on the held-out test set: 0.704.</p>
-    <p>Runs on CPU in this container; comments are not stored or sent to any other service.</p>
+    <p id="where">&nbsp;</p>
   </div>
 </footer>
 
-<script>
+<script type="module">
   const SAMPLES = [
     "الخدمة تاعكم ماشي مليحة، الكونكسيون تقطع كل ليلة",
     "merci bzaf, la livraison wslat f wa9tha",
@@ -141,6 +143,66 @@
   const $ = (id) => document.getElementById(id);
   let last = null;
   let filter = null;
+
+  // Two ways to run: the FastAPI server (app/main.py) when it is there, otherwise the 8-bit ONNX
+  // model in the visitor's browser with transformers.js (static hosting).
+  const MODEL = "okba-bouziane/dzsentiment-xlmr-base";
+  const LIB = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1";
+  let mode = "browser";
+  let browserModel = null;
+
+  async function detectMode() {
+    try {
+      const res = await fetch("health", { cache: "no-store" });
+      const body = await res.json();
+      if (res.ok && body.ok) mode = "server";
+    } catch (_) { /* static host: no API */ }
+    $("where").textContent = mode === "server"
+      ? "Runs on the server's CPU. Comments are not stored."
+      : "Runs in your browser (8-bit ONNX model, same mean score as full precision). Comments never leave this device.";
+    if (mode === "browser") $("status").textContent = "The first analysis downloads the model (about 280 MB) once; your browser keeps it for later visits.";
+  }
+
+  async function loadBrowserModel() {
+    if (browserModel) return browserModel;
+    const { pipeline } = await import(LIB);
+    const files = {};
+    browserModel = await pipeline("text-classification", MODEL, {
+      dtype: "q8",
+      progress_callback: (p) => {
+        if (p.status === "progress" && p.total) {
+          files[p.file] = [p.loaded, p.total];
+          const [l, t] = Object.values(files).reduce((a, [x, y]) => [a[0] + x, a[1] + y], [0, 0]);
+          $("status").textContent = `Downloading the model: ${Math.round(l / 1e6)} of ${Math.round(t / 1e6)} MB`;
+        }
+      },
+    });
+    return browserModel;
+  }
+
+  async function classifyInBrowser(texts) {
+    const clf = await loadBrowserModel();
+    $("status").textContent = "Analyzing in your browser…";
+    const out = await clf(texts, { top_k: null });
+    const lists = texts.length === 1 && !Array.isArray(out[0]) ? [out] : out;
+    const results = lists.map((list, i) => {
+      const scores = Object.fromEntries(list.map((x) => [x.label, x.score]));
+      const label = LABELS.reduce((a, b) => (scores[b] > scores[a] ? b : a));
+      return { text: texts[i], label, scores };
+    });
+    const counts = Object.fromEntries(LABELS.map((l) => [l, results.filter((r) => r.label === l).length]));
+    $("status").textContent = "";
+    return { results, counts };
+  }
+
+  async function classifyOnServer(texts) {
+    const res = await fetch("api/classify", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texts })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "The request failed. Try again.");
+    return body;
+  }
 
   const lines = () => $("input").value.split("\n").map((s) => s.trim()).filter(Boolean);
   const updateCount = () => { $("count").textContent = `${lines().length} of 50 lines`; };
@@ -158,17 +220,16 @@
     const texts = lines();
     $("error").hidden = true;
     if (!texts.length) return showError("Add at least one comment.");
+    if (texts.length > 50) return showError("At most 50 comments at a time.");
+    if (texts.some((t) => t.length > 1000)) return showError("Each comment must be at most 1000 characters.");
     $("run").disabled = true; $("run").textContent = "Analyzing…";
     try {
-      const res = await fetch("api/classify", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texts })
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "The request failed. Try again.");
-      last = body; filter = null; render();
+      last = mode === "server" ? await classifyOnServer(texts) : await classifyInBrowser(texts);
+      filter = null; render();
       $("results").hidden = false;
     } catch (e) {
-      showError(e.message);
+      $("status").textContent = "";
+      showError(e.message || "Something went wrong. Try again.");
     } finally {
       $("run").disabled = false; $("run").textContent = "Analyze";
     }
@@ -207,6 +268,7 @@
   function showError(msg) { $("error").textContent = msg; $("error").hidden = false; }
   $("run").addEventListener("click", run);
   $("input").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run(); });
+  detectMode();
 </script>
 </body>
 </html>

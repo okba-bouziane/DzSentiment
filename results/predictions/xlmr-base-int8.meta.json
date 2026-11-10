@@ -1,0 +1,10 @@
+{
+  "source_model": "models/xlmr-base",
+  "quantization": "onnxruntime quantize_dynamic, QInt8 weights",
+  "onnx_sizes_mb": {
+    "model.onnx": 1112.4,
+    "model_quantized.onnx": 278.8
+  },
+  "agreement_with_full_precision": "6936/7602",
+  "cpu_seconds_full_test": 139.3
+}

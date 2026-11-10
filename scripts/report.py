@@ -14,6 +14,7 @@ NAMES = {
     "zeroshot-gpt-oss-20b": "Zero-shot `gpt-oss-20b`",
     "zeroshot-gpt-oss-120b": "Zero-shot `gpt-oss-120b`",
     "xlmr-base": "XLM-RoBERTa base, fine-tuned",
+    "xlmr-base-int8": "XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo)",
     "xlmr-base-os4": "XLM-RoBERTa base, fine-tuned, small languages x4",
     "dziribert": "DziriBERT, fine-tuned",
 }

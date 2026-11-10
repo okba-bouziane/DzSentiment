@@ -19,6 +19,11 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8", "httpx>=0.27"]
+export = [
+    "onnx>=1.16",
+    "onnxruntime>=1.19",
+    "onnxscript>=0.1",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

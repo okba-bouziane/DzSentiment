@@ -4,11 +4,15 @@
 
 A sentiment classifier for customer text in **Algerian Darija** (Arabic letters, Latin letters or both), **Arabic**, **French** and **English**. Two pre-trained encoders are fine-tuned on 45,516 labelled comments and tweets and compared with a TF-IDF baseline and two zero-shot LLMs. The model is scored on a held-out test set, with macro-F1 for each language and a confusion matrix. The fine-tuned XLM-RoBERTa model runs on CPU in about 30 ms per comment and calls no external API.
 
-**Stack:** PyTorch · Hugging Face Transformers · scikit-learn · FastAPI · Kaggle (T4 GPU) for training · pytest · GitHub Actions
+**Stack:** PyTorch · Hugging Face Transformers · scikit-learn · ONNX Runtime + transformers.js (in-browser inference) · FastAPI · Kaggle (T4 GPU) for training · pytest · GitHub Actions
+
+**Live demo:** https://huggingface.co/spaces/okba-bouziane/DzSentiment · **Model:** https://huggingface.co/okba-bouziane/dzsentiment-xlmr-base
 
 ![Demo](docs/demo.jpg)
 
-The demo is a plain page: paste comments, one per line, and get a label and a confidence for each. It runs locally (`make demo`). It is not hosted yet.
+The demo is a plain page: paste comments, one per line, and get a label and a confidence for each. The counts at the top filter the table, and the results download as CSV. The page works in two ways:
+- **Hosted (static Space):** an 8-bit ONNX copy of the model (279 MB, downloaded once and cached) runs in the visitor's browser with transformers.js. Comments never leave the device.
+- **Server:** `make demo` runs the FastAPI app with the full-precision model and a per-client rate limit.
 
 ## Results
 
@@ -31,6 +35,7 @@ Mean macro-F1 over the four languages, on the test set (each language weighs the
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TF-IDF + logistic regression | 0.760 | 0.490 | 0.565 | 0.549 | **0.591** | 0.690 | 0.700 |
 | XLM-RoBERTa base, fine-tuned | 0.783 | 0.622 | 0.719 | 0.692 | **0.704** | 0.749 | 0.767 |
+| XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo) | 0.774 | 0.636 | 0.706 | 0.700 | **0.704** | 0.746 | 0.763 |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.781 | 0.636 | 0.718 | 0.675 | **0.702** | 0.748 | 0.764 |
 | DziriBERT, fine-tuned | 0.812 | 0.641 | 0.601 | 0.640 | **0.674** | 0.751 | 0.766 |
 
@@ -44,6 +49,7 @@ The zero-shot LLMs were run on a fixed random sample to stay inside a free API q
 | Zero-shot `gpt-oss-20b` | 0.724 | 0.593 | 0.457 | 0.607 | **0.595** |
 | Zero-shot `gpt-oss-120b` | 0.757 | 0.617 | 0.469 | 0.713 | **0.639** |
 | XLM-RoBERTa base, fine-tuned | 0.793 | 0.590 | 0.691 | 0.721 | **0.699** |
+| XLM-RoBERTa base, fine-tuned, 8-bit ONNX | 0.786 | 0.586 | 0.707 | 0.712 | **0.698** |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.790 | 0.596 | 0.711 | 0.737 | **0.708** |
 | DziriBERT, fine-tuned | 0.840 | 0.665 | 0.590 | 0.637 | **0.683** |
 
@@ -55,6 +61,7 @@ The LLMs used Groq's API with temperature 0 and `reasoning_effort: low`, labelli
 | --- | --- | --- | --- |
 | TF-IDF + logistic regression | 0.760 | 0.720 | 0.843 |
 | XLM-RoBERTa base, fine-tuned | 0.788 | 0.711 | 0.850 |
+| XLM-RoBERTa base, fine-tuned, 8-bit ONNX | 0.778 | 0.709 | 0.848 |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.785 | 0.710 | 0.844 |
 | DziriBERT, fine-tuned | 0.810 | 0.795 | 0.889 |
 
@@ -77,6 +84,11 @@ CPU only, 2 threads (the size of a free Hugging Face CPU Space), Apple M1 Pro, 2
 | TF-IDF + logistic regression | 14.9 MB | 0.6 ms | 0.9 ms | 0.1 ms |
 | DziriBERT, fine-tuned | 499.5 MB | 29.4 ms | 33.3 ms | 10.06 ms |
 | XLM-RoBERTa base, fine-tuned | 1134.4 MB | 29.7 ms | 35.1 ms | 12.82 ms |
+
+**The 8-bit model.** `scripts/export_onnx.py` exports XLM-RoBERTa to ONNX and quantises its weights to 8 bits with ONNX Runtime, which takes it from 1,112 MB to 279 MB.
+- **Same score:** the mean macro-F1 stays at 0.704 (table above).
+- **Some labels change:** on 666 of the 7,602 test rows (8.8%), the 8-bit model gives a different label from the full model. The gains and losses cancel out.
+- **In the browser:** with transformers.js 4.3.1, the labels on 71 test comments match the Python 8-bit model on 66 and the full model on 67. Classifying one comment at a time took 117 ms on average.
 
 Training on one Kaggle T4 GPU took 9.5 min for XLM-RoBERTa (278M parameters), 6.6 min for DziriBERT (124M) and 12.8 min for the oversampled XLM-RoBERTa run.
 
@@ -122,6 +134,8 @@ Every system writes `results/predictions/<name>.jsonl` (`id`, `pred`). `scripts/
   - Training moved to a free Kaggle T4 (`kaggle/build_kernel.py`). Predictions from the Kaggle model and from the same model loaded on the laptop agree on 500 of 500 test rows.
 - **Oversampling the small languages did not help.** Repeating the Arabic, French and English rows 4 times scored 0.702 against 0.704 on the test set (Arabic +0.014, English −0.017). With one seed, both differences are within noise.
 - **Zero-shot LLMs do badly on the French tweets (0.457 and 0.469).** `gpt-oss-120b` labels 52 of the 66 positive French tweets in the sample as neutral. The dataset often labels promotional or news tweets with hashtags as positive (for example `#press #seo: Nager vert avec les piscines écologiques`). A fine-tuned model learns this convention from the training labels and a zero-shot model cannot. Part of the fine-tuning gain therefore comes from learning how this dataset was annotated, not only from better language understanding.
+- **The planned server demo needed a paid plan.** The FastAPI app was packaged as a Hugging Face Docker Space, but Docker and Gradio Spaces on the free CPU tier now require a PRO subscription. The hosted demo is therefore a free static Space, and the model runs in the browser instead (`deploy/huggingface-static/`). The Docker files are kept in `deploy/huggingface/`.
+- **Per-channel 8-bit quantisation was not better.** It scored a mean of 0.705 against 0.704, but matched the full model's labels on fewer rows (6,902 of 7,602 against 6,936).
 - **One model is not best everywhere.** DziriBERT wins on Darija (especially Latin-letter Darija) and loses 0.12 on French against XLM-RoBERTa. Sending Darija to DziriBERT and the rest to XLM-RoBERTa would need a language detector, which is not built.
 
 ## Run it
@@ -152,7 +166,10 @@ kaggle kernels output <kaggle-username>/dzsentiment-train -p build/kaggle-out
 
 The job is one private script. It contains this repo's code, downloads the same pinned data, trains the three runs on one GPU, and leaves predictions and models in its output.
 
-**Hosting the demo.** `deploy/huggingface/` has a Docker Space (CPU, port 7860). Its build downloads the fine-tuned weights from a Hub model repo (`MODEL_REPO`). `deploy/huggingface/stage.sh` prepares the folder to upload.
+**Hosting the demo.**
+- `python scripts/export_onnx.py` writes the 8-bit model in the layout transformers.js expects (`onnx/model_quantized.onnx` next to the tokenizer files) and scores it on the test set.
+- `deploy/huggingface/stage.sh static` prepares the free static Space: one HTML page plus the Space card. The page checks for the API, and when there is none it loads the model from the Hub repo into the browser.
+- `deploy/huggingface/stage.sh docker` prepares a Docker Space instead: the FastAPI server on port 7860, which downloads the full-precision weights at build time.
 
 ## Tests
 
@@ -160,11 +177,11 @@ The job is one private script. It contains this repo's code, downloads the same 
 make test
 ```
 
-**17 tests, all passing in the last run.** No model download and no GPU needed:
+**18 tests, all passing in the last run.** No model download and no GPU needed:
 - **Data:** cleaning, script detection, deterministic stratified split with no overlap, duplicate and conflicting-label removal, cross-split leak removal.
 - **Metrics:** perfect scores, each language weighing the same in the mean, a missing prediction raising an error.
 - **LLM baseline:** prompt building and strict reply parsing (wrong count, unknown label, no JSON).
-- **Demo API:** results and counts, trimming, input limits, page and health check, with a fake classifier.
+- **Demo API:** results and counts, trimming, input limits, the per-client rate limit (429 with `Retry-After`), page and health check, with a fake classifier.
 - **Training:** the evaluation-order regression test described above.
 
 CI runs them on every push.
@@ -173,10 +190,11 @@ CI runs them on every push.
 
 ```
 dzsent/        data loading and splitting, metrics, LLM prompt/parse, inference wrapper, ordered-eval trainer
-scripts/       prepare_data, baseline_tfidf, baseline_llm, train, evaluate, latency, report
-app/           FastAPI demo and its single HTML page
+scripts/       prepare_data, baseline_tfidf, baseline_llm, train, evaluate, latency, export_onnx, report
+app/           FastAPI demo and its single HTML page (server or in-browser model)
 kaggle/        builds the self-contained Kaggle training job
-deploy/huggingface/   Docker Space files
+deploy/huggingface-static/   static Space card (the hosted demo)
+deploy/huggingface/          Docker Space files and stage.sh
 results/       predictions per system, metrics.json, latency.json, data_stats.json, figures/
 tests/
 ```
@@ -188,7 +206,7 @@ tests/
 - **One training seed per model.** Differences of about 0.01 between fine-tuned models are not meaningful.
 - **The LLM numbers come from 800 rows** (200 per language) and one prompt, with 20 texts per request. A different prompt or few-shot examples could change them.
 - **No language detector.** The demo uses XLM-RoBERTa for every comment. Sarcasm and comments that are both negative and positive get a single label.
-- **XLM-RoBERTa is 1.1 GB on disk.** Quantisation or distillation was not tried.
+- **The hosted demo is heavy.** It uses the 8-bit model, a 279 MB first download, which is slow on mobile data. A smaller model (a trimmed vocabulary or distillation) was not tried.
 
 ## License
 
