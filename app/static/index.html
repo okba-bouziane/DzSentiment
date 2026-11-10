@@ -151,7 +151,7 @@
   let mode = "browser";
   let browserModel = null;
 
-  async function detectMode() {
+  async function detectMode() {  // returns once the mode is known
     try {
       const res = await fetch("health", { cache: "no-store" });
       const body = await res.json();
@@ -268,7 +268,10 @@
   function showError(msg) { $("error").textContent = msg; $("error").hidden = false; }
   $("run").addEventListener("click", run);
   $("input").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run(); });
-  detectMode();
+  // index.html#samples fills in the sample comments and runs them (a link that shows the demo at once).
+  detectMode().then(() => {
+    if (location.hash === "#samples") { $("input").value = SAMPLES.join("\n"); updateCount(); run().then(() => window.scrollTo(0, 0)); }
+  });
 </script>
 </body>
 </html>
