@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 import os
-from collections import Counter
+import time
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from typing import Protocol
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -29,8 +30,33 @@ class ClassifyIn(BaseModel):
     texts: list[str]
 
 
-def create_app(classifier: Classifier, model_name: str = "") -> FastAPI:
+class RateLimiter:
+    """Sliding window per client: at most `limit` requests in `window` seconds (in memory, one process)."""
+
+    def __init__(self, limit: int, window: float, clock=time.monotonic):
+        self.limit, self.window, self.clock = limit, window, clock
+        self.hits: dict[str, deque] = defaultdict(deque)
+
+    def retry_after(self, key: str) -> int:
+        """0 if the request may go ahead (and is counted), else seconds to wait."""
+        now = self.clock()
+        q = self.hits[key]
+        while q and now - q[0] >= self.window:
+            q.popleft()
+        if len(q) >= self.limit:
+            return max(1, int(self.window - (now - q[0])) + 1)
+        q.append(now)
+        return 0
+
+
+def client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+def create_app(classifier: Classifier, model_name: str = "", limiter: RateLimiter | None = None) -> FastAPI:
     api = FastAPI(title="DzSentiment", docs_url=None, redoc_url=None)
+    limiter = limiter or RateLimiter(int(os.environ.get("RATE_LIMIT_PER_MINUTE", "30")), 60)
 
     @api.get("/")
     def index():
@@ -41,7 +67,11 @@ def create_app(classifier: Classifier, model_name: str = "") -> FastAPI:
         return {"ok": True, "model": model_name}
 
     @api.post("/api/classify")
-    def classify(body: ClassifyIn):
+    def classify(body: ClassifyIn, request: Request):
+        wait = limiter.retry_after(client_key(request))
+        if wait:
+            raise HTTPException(429, f"Too many requests. Try again in {wait} seconds.",
+                                headers={"Retry-After": str(wait)})
         texts = [t.strip() for t in body.texts if t and t.strip()]
         if not texts:
             raise HTTPException(422, "Add at least one comment.")

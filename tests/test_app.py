@@ -46,3 +46,22 @@ def test_page_and_health():
     assert c.get("/health").json() == {"ok": True, "model": "fake"}
     page = c.get("/")
     assert page.status_code == 200 and "<textarea" in page.text
+
+
+def test_rate_limit_per_client():
+    from app.main import RateLimiter
+
+    now = [0.0]
+    limiter = RateLimiter(limit=2, window=60, clock=lambda: now[0])
+    fake = FakeClassifier()
+    c = TestClient(create_app(fake, "fake", limiter))
+    ok = {"texts": ["zwin"]}
+    a = {"X-Forwarded-For": "1.1.1.1"}
+    assert c.post("/api/classify", json=ok, headers=a).status_code == 200
+    assert c.post("/api/classify", json=ok, headers=a).status_code == 200
+    r = c.post("/api/classify", json=ok, headers=a)
+    assert r.status_code == 429 and r.headers["Retry-After"] == "61"
+    assert c.post("/api/classify", json=ok, headers={"X-Forwarded-For": "2.2.2.2"}).status_code == 200
+    now[0] = 61
+    assert c.post("/api/classify", json=ok, headers=a).status_code == 200
+    assert len(fake.calls) == 4  # the refused request never reached the model
