@@ -1,0 +1,101 @@
+{
+  "sources": {
+    "darija": {
+      "raw_rows": 50016,
+      "duplicates_removed": 13,
+      "conflicting_texts_removed": 4,
+      "cross_split_removed": {
+        "validation": 0,
+        "test": 0
+      }
+    },
+    "arabic": {
+      "raw_rows": 3033,
+      "cross_split_removed": {
+        "validation": 1,
+        "test": 0
+      }
+    },
+    "french": {
+      "raw_rows": 3033,
+      "cross_split_removed": {
+        "validation": 0,
+        "test": 8
+      }
+    },
+    "english": {
+      "raw_rows": 3033,
+      "cross_split_removed": {
+        "validation": 0,
+        "test": 0
+      }
+    }
+  },
+  "sha256": {
+    "train": "323e8ea50bcf826c6431e137985e09dba66d205dfaee326d8c547267a0c82a40",
+    "validation": "7e72efa82e53d53b4d058d354d382a72fc1b1298d2c3b31a2f4c3bcb5f3398bb",
+    "test": "7c199b858f889bb968d8093806d3571b7fb79d7059818936139035588210e003"
+  },
+  "splits": {
+    "train": {
+      "rows": 45516,
+      "by_lang": {
+        "darija": 39999,
+        "arabic": 1839,
+        "french": 1839,
+        "english": 1839
+      },
+      "by_label": {
+        "0": 15464,
+        "2": 19309,
+        "1": 10743
+      },
+      "darija_script": {
+        "arabic": 33714,
+        "latin": 5058,
+        "mixed": 1162,
+        "other": 65
+      }
+    },
+    "validation": {
+      "rows": 5971,
+      "by_lang": {
+        "darija": 5000,
+        "arabic": 323,
+        "french": 324,
+        "english": 324
+      },
+      "by_label": {
+        "0": 2027,
+        "2": 2508,
+        "1": 1436
+      },
+      "darija_script": {
+        "arabic": 4211,
+        "latin": 641,
+        "mixed": 140,
+        "other": 8
+      }
+    },
+    "test": {
+      "rows": 7602,
+      "by_lang": {
+        "darija": 5000,
+        "arabic": 870,
+        "french": 862,
+        "english": 870
+      },
+      "by_label": {
+        "2": 3050,
+        "0": 2570,
+        "1": 1982
+      },
+      "darija_script": {
+        "latin": 612,
+        "arabic": 4219,
+        "mixed": 157,
+        "other": 12
+      }
+    }
+  }
+}

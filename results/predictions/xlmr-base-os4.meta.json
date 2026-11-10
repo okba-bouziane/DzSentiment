@@ -1,0 +1,57 @@
+{
+  "base_model": "FacebookAI/xlm-roberta-base",
+  "revision": "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089",
+  "device": "cuda",
+  "args": {
+    "model": "FacebookAI/xlm-roberta-base",
+    "name": "xlmr-base-os4",
+    "epochs": 3,
+    "lr": 2e-05,
+    "batch": 32,
+    "accum": 1,
+    "freeze_embeddings": false,
+    "max_steps": -1,
+    "max_len": 128,
+    "oversample": 4,
+    "seed": 42,
+    "limit": 0
+  },
+  "train_rows": 62067,
+  "train_minutes": 12.8,
+  "best_validation": {
+    "mean_lang_macro_f1": 0.7107,
+    "macro_f1": 0.7507,
+    "f1_darija": 0.76,
+    "f1_arabic": 0.6806,
+    "f1_french": 0.7269,
+    "f1_english": 0.6754
+  },
+  "validation_per_epoch": [
+    {
+      "epoch": 1.0,
+      "mean_lang_macro_f1": 0.7032,
+      "f1_darija": 0.7323,
+      "f1_arabic": 0.6622,
+      "f1_french": 0.7415,
+      "f1_english": 0.6766
+    },
+    {
+      "epoch": 2.0,
+      "mean_lang_macro_f1": 0.7005,
+      "f1_darija": 0.7523,
+      "f1_arabic": 0.6614,
+      "f1_french": 0.7189,
+      "f1_english": 0.6691
+    },
+    {
+      "epoch": 3.0,
+      "mean_lang_macro_f1": 0.7107,
+      "f1_darija": 0.76,
+      "f1_arabic": 0.6806,
+      "f1_french": 0.7269,
+      "f1_english": 0.6754
+    }
+  ],
+  "parameters_millions": 278.0,
+  "trainable_parameters_millions": 278.0
+}

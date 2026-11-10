@@ -1,0 +1,31 @@
+{
+  "threads": 2,
+  "machine": "Apple M1 Pro (arm64)",
+  "comments": 200,
+  "models": {
+    "tfidf-logreg": {
+      "single_p50_ms": 0.6,
+      "single_p95_ms": 0.9,
+      "batch32_ms_per_comment": 0.1,
+      "size_mb": 14.9
+    },
+    "dziribert": {
+      "single_p50_ms": 29.4,
+      "single_p95_ms": 33.3,
+      "batch32_ms_per_comment": 10.06,
+      "size_mb": 499.5
+    },
+    "xlmr-base": {
+      "single_p50_ms": 29.7,
+      "single_p95_ms": 35.1,
+      "batch32_ms_per_comment": 12.82,
+      "size_mb": 1134.4
+    },
+    "xlmr-base-os4": {
+      "single_p50_ms": 29.9,
+      "single_p95_ms": 35.3,
+      "batch32_ms_per_comment": 12.8,
+      "size_mb": 1134.4
+    }
+  }
+}

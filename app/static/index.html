@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comment sentiment</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6675; --line: #dfe3ea;
+    --accent: #3445a8; --accent-text: #ffffff;
+    --neg: #b42318; --neu: #6b7280; --pos: #0f7a4a;
+    --neg-bar: #e5534b; --neu-bar: #b8bec9; --pos-bar: #2f9e6a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171c; --panel: #1d2027; --text: #e6e8ec; --muted: #9aa2b1; --line: #2f343e;
+      --accent: #8d9bf0; --accent-text: #11131a;
+      --neg: #f2857d; --neu: #a3abb8; --pos: #5cc493;
+      --neg-bar: #d9534a; --neu-bar: #6b7280; --pos-bar: #2f9e6a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  textarea { width: 100%; min-height: 180px; resize: vertical; padding: 10px; border-radius: 6px;
+             border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  button { font: inherit; border-radius: 6px; padding: 8px 16px; cursor: pointer; border: 1px solid var(--line);
+           background: var(--panel); color: var(--text); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .6; cursor: default; }
+  .hint { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .error { color: var(--neg); margin-top: 10px; }
+  #results { margin-top: 20px; }
+  .summary { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; font-size: 14px; }
+  .summary b { font-size: 18px; margin-right: 4px; }
+  .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); margin-bottom: 16px; }
+  .bar span { display: block; height: 100%; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: start; padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; border-top: 0; }
+  td.text { width: 100%; overflow-wrap: anywhere; }
+  td.label { white-space: nowrap; font-weight: 600; }
+  td.conf { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .negative { color: var(--neg); } .neutral { color: var(--neu); } .positive { color: var(--pos); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 28px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Comment sentiment</h1>
+  <p class="lead">Paste customer comments, one per line. The model reads Algerian Darija (in Arabic or Latin letters), Arabic, French and English, and marks each comment as negative, neutral or positive.</p>
+
+  <div class="panel">
+    <label for="input">Comments</label>
+    <textarea id="input" placeholder="One comment per line"></textarea>
+    <div class="row">
+      <button class="primary" id="run">Analyze</button>
+      <button id="examples">Load examples</button>
+      <span class="hint" id="count">0 / 50 lines</span>
+    </div>
+    <div class="error" id="error" hidden></div>
+  </div>
+
+  <section id="results" hidden>
+    <div class="panel">
+      <div class="summary" id="summary"></div>
+      <div class="bar" id="bar"></div>
+      <table>
+        <thead><tr><th>Comment</th><th>Sentiment</th><th>Confidence</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    A fine-tuned text classifier running on CPU, no external API. Built by Okba Bouziane.
+    Training data, evaluation and code: <a href="https://github.com/okba-bouziane/DzSentiment">GitHub</a>.
+  </footer>
+</main>
+<script>
+  const EXAMPLES = [
+    "الخدمة تاعكم ماشي مليحة، الكونكسيون تقطع كل ليلة",
+    "merci bzaf, la livraison wslat f wa9tha",
+    "wach kayen promo had la semaine?",
+    "شكرا على السرعة في الرد",
+    "Le service client ne répond jamais au téléphone.",
+    "Quand est-ce que l'offre 4G sera disponible à Oran ?",
+    "Great app, fast delivery and easy returns.",
+    "I was charged twice and nobody answered my emails."
+  ];
+  const LABELS = ["negative", "neutral", "positive"];
+  const $ = (id) => document.getElementById(id);
+  const lines = () => $("input").value.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  function updateCount() { $("count").textContent = `${lines().length} / 50 lines`; }
+  $("input").addEventListener("input", updateCount);
+  $("examples").addEventListener("click", () => { $("input").value = EXAMPLES.join("\n"); updateCount(); });
+
+  function cell(tag, cls, text) {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    el.textContent = text;
+    return el;
+  }
+
+  async function run() {
+    const texts = lines();
+    $("error").hidden = true;
+    if (!texts.length) { showError("Add at least one comment."); return; }
+    $("run").disabled = true; $("run").textContent = "Analyzing…";
+    try {
+      const res = await fetch("api/classify", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texts })
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Request failed.");
+      render(body);
+    } catch (e) {
+      showError(e.message || "Request failed.");
+    } finally {
+      $("run").disabled = false; $("run").textContent = "Analyze";
+    }
+  }
+
+  function render(body) {
+    const total = body.results.length;
+    $("summary").replaceChildren(...LABELS.map((l) => {
+      const span = cell("span", l, "");
+      span.append(cell("b", "", String(body.counts[l])), `${l}`);
+      return span;
+    }));
+    $("bar").replaceChildren(...LABELS.filter((l) => body.counts[l]).map((l) => {
+      const s = document.createElement("span");
+      s.style.width = `${(100 * body.counts[l]) / total}%`;
+      s.style.background = `var(--${l.slice(0, 3)}-bar)`;
+      s.title = `${body.counts[l]} ${l}`;
+      return s;
+    }));
+    $("rows").replaceChildren(...body.results.map((r) => {
+      const tr = document.createElement("tr");
+      const text = cell("td", "text", r.text);
+      text.dir = "auto";
+      tr.append(text, cell("td", `label ${r.label}`, r.label), cell("td", "conf", `${Math.round(r.scores[r.label] * 100)}%`));
+      return tr;
+    }));
+    $("results").hidden = false;
+  }
+
+  function showError(msg) { $("error").textContent = msg; $("error").hidden = false; }
+  $("run").addEventListener("click", run);
+  $("input").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run(); });
+</script>
+</body>
+</html>

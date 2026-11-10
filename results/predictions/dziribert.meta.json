@@ -1,0 +1,57 @@
+{
+  "base_model": "alger-ia/dziribert",
+  "revision": "4722886048b304627caaeed800733e6376f5d13d",
+  "device": "cuda",
+  "args": {
+    "model": "alger-ia/dziribert",
+    "name": "dziribert",
+    "epochs": 3,
+    "lr": 2e-05,
+    "batch": 32,
+    "accum": 1,
+    "freeze_embeddings": false,
+    "max_steps": -1,
+    "max_len": 128,
+    "oversample": 1,
+    "seed": 42,
+    "limit": 0
+  },
+  "train_rows": 45516,
+  "train_minutes": 6.6,
+  "best_validation": {
+    "mean_lang_macro_f1": 0.687,
+    "macro_f1": 0.782,
+    "f1_darija": 0.809,
+    "f1_arabic": 0.6506,
+    "f1_french": 0.6528,
+    "f1_english": 0.6355
+  },
+  "validation_per_epoch": [
+    {
+      "epoch": 1.0,
+      "mean_lang_macro_f1": 0.677,
+      "f1_darija": 0.8128,
+      "f1_arabic": 0.6291,
+      "f1_french": 0.6338,
+      "f1_english": 0.6322
+    },
+    {
+      "epoch": 2.0,
+      "mean_lang_macro_f1": 0.687,
+      "f1_darija": 0.809,
+      "f1_arabic": 0.6506,
+      "f1_french": 0.6528,
+      "f1_english": 0.6355
+    },
+    {
+      "epoch": 3.0,
+      "mean_lang_macro_f1": 0.6859,
+      "f1_darija": 0.8069,
+      "f1_arabic": 0.6668,
+      "f1_french": 0.6596,
+      "f1_english": 0.6101
+    }
+  ],
+  "parameters_millions": 124.4,
+  "trainable_parameters_millions": 124.4
+}

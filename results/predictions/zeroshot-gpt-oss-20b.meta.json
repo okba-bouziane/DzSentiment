@@ -1,0 +1,14 @@
+{
+  "model": "openai/gpt-oss-20b",
+  "endpoint": "api.groq.com",
+  "reasoning_effort": "low",
+  "texts_per_request": 20,
+  "sample_size": 800,
+  "unanswered_counted_wrong": 0,
+  "batches_retried_one_by_one": 0,
+  "tokens": {
+    "in": 31500,
+    "out": 9298
+  },
+  "minutes": 4.2
+}
