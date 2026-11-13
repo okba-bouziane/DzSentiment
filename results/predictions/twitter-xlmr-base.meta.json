@@ -1,0 +1,57 @@
+{
+  "base_model": "cardiffnlp/twitter-xlm-roberta-base",
+  "revision": "4c365f1490cb329b52150ad72f922ea467b5f4e6",
+  "device": "cuda",
+  "args": {
+    "model": "cardiffnlp/twitter-xlm-roberta-base",
+    "name": "twitter-xlmr-base",
+    "epochs": 3,
+    "lr": 2e-05,
+    "batch": 32,
+    "accum": 1,
+    "freeze_embeddings": false,
+    "max_steps": -1,
+    "max_len": 128,
+    "oversample": 1,
+    "seed": 42,
+    "limit": 0
+  },
+  "train_rows": 45516,
+  "train_minutes": 9.7,
+  "best_validation": {
+    "mean_lang_macro_f1": 0.7202,
+    "macro_f1": 0.7686,
+    "f1_darija": 0.781,
+    "f1_arabic": 0.6897,
+    "f1_french": 0.7016,
+    "f1_english": 0.7083
+  },
+  "validation_per_epoch": [
+    {
+      "epoch": 1.0,
+      "mean_lang_macro_f1": 0.6969,
+      "f1_darija": 0.7721,
+      "f1_arabic": 0.6457,
+      "f1_french": 0.6852,
+      "f1_english": 0.6847
+    },
+    {
+      "epoch": 2.0,
+      "mean_lang_macro_f1": 0.7185,
+      "f1_darija": 0.7779,
+      "f1_arabic": 0.6742,
+      "f1_french": 0.7034,
+      "f1_english": 0.7186
+    },
+    {
+      "epoch": 3.0,
+      "mean_lang_macro_f1": 0.7202,
+      "f1_darija": 0.781,
+      "f1_arabic": 0.6897,
+      "f1_french": 0.7016,
+      "f1_english": 0.7083
+    }
+  ],
+  "parameters_millions": 278.0,
+  "trainable_parameters_millions": 278.0
+}

@@ -39,6 +39,8 @@ from dzsent.training import OrderedEvalTrainer  # noqa: E402
 REVISIONS = {
     "FacebookAI/xlm-roberta-base": "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089",
     "alger-ia/dziribert": "4722886048b304627caaeed800733e6376f5d13d",
+    "FacebookAI/xlm-roberta-large": "c23d21b0620b635a76227c604d44e43a9f0ee389",
+    "cardiffnlp/twitter-xlm-roberta-base": "4c365f1490cb329b52150ad72f922ea467b5f4e6",
 }
 
 
@@ -156,6 +158,11 @@ def main() -> None:
     best_val = trainer.evaluate()
     logits = trainer.predict(test_ds).predictions
     preds = np.argmax(logits, axis=-1).tolist()
+    if not args.limit:  # kept so systems can be ensembled later (scripts/ensemble.py)
+        Path("results/predictions").mkdir(parents=True, exist_ok=True)
+        np.save(f"results/predictions/{args.name}.logits.npy", logits.astype(np.float32))
+        val_logits = trainer.predict(val_ds).predictions
+        np.save(f"results/predictions/{args.name}.val_logits.npy", val_logits.astype(np.float32))
 
     trainer.save_model(str(out_dir))
     tok.save_pretrained(str(out_dir))
@@ -163,7 +170,8 @@ def main() -> None:
     shutil.rmtree(out_dir / "checkpoints", ignore_errors=True)
 
     meta = {
-        "base_model": args.model, "revision": rev, "device": device(),
+        "base_model": args.model, "revision": rev or getattr(model.config, "_commit_hash", None),
+        "device": device(),
         "args": vars(args), "train_rows": len(train_rows),
         "train_minutes": round(train_s / 60, 1),
         "best_validation": {k.removeprefix("eval_"): round(v, 4) for k, v in best_val.items()

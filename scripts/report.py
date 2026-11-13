@@ -17,6 +17,10 @@ NAMES = {
     "xlmr-base-int8": "XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo)",
     "xlmr-base-os4": "XLM-RoBERTa base, fine-tuned, small languages x4",
     "dziribert": "DziriBERT, fine-tuned",
+    "xlmr-large": "XLM-RoBERTa large, fine-tuned",
+    "twitter-xlmr-base": "Twitter-XLM-RoBERTa base, fine-tuned",
+    "ens-xlmr-large-dziribert": "Ensemble: XLM-R large + DziriBERT",
+    "ens-xlmr-large-twitter-xlmr": "Ensemble: XLM-R large + Twitter-XLM-R",
 }
 
 

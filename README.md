@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/okba-bouziane/DzSentiment/actions/workflows/ci.yml/badge.svg)](https://github.com/okba-bouziane/DzSentiment/actions/workflows/ci.yml)
 
-A sentiment classifier for customer text in **Algerian Darija** (Arabic letters, Latin letters or both), **Arabic**, **French** and **English**. Two pre-trained encoders are fine-tuned on 45,516 labelled comments and tweets and compared with a TF-IDF baseline and two zero-shot LLMs. The model is scored on a held-out test set, with macro-F1 for each language and a confusion matrix. The fine-tuned XLM-RoBERTa model runs on CPU in about 30 ms per comment and calls no external API.
+A sentiment classifier for customer text in **Algerian Darija** (Arabic letters, Latin letters or both), **Arabic**, **French** and **English**. Four pre-trained encoders are fine-tuned on 45,516 labelled comments and tweets, combined into an ensemble, and compared with a TF-IDF baseline and two zero-shot LLMs. Every system is scored on the same held-out test set, with macro-F1 for each language and a confusion matrix. The best system, an ensemble of XLM-RoBERTa large and Twitter-XLM-RoBERTa, reaches a mean macro-F1 of 0.732 over the four languages (TF-IDF: 0.591). The demo uses the single XLM-RoBERTa base model, which runs on CPU in about 30 ms per comment and calls no external API.
 
 **Stack:** PyTorch · Hugging Face Transformers · scikit-learn · ONNX Runtime + transformers.js (in-browser inference) · FastAPI · Kaggle (T4 GPU) for training · pytest · GitHub Actions
 
@@ -22,11 +22,15 @@ Mean macro-F1 over the four languages, on the test set (each language weighs the
 | --- | --- | --- |
 | TF-IDF + logistic regression | 0.591 | |
 | DziriBERT, fine-tuned | 0.674 | +0.083 |
-| **XLM-RoBERTa base, fine-tuned** | **0.704** | **+0.113** |
+| XLM-RoBERTa base, fine-tuned (the demo model) | 0.704 | +0.113 |
+| XLM-RoBERTa large, fine-tuned | 0.715 | +0.124 |
+| Twitter-XLM-RoBERTa base, fine-tuned | 0.717 | +0.126 |
+| **Ensemble: XLM-R large + Twitter-XLM-R** | **0.732** | **+0.141** |
 
-- **Fine-tuning beats the TF-IDF baseline in every language.** XLM-RoBERTa gains +0.023 on Darija, +0.132 on Arabic, +0.154 on French and +0.143 on English.
-- **It also beats zero-shot LLMs.** On the same 800-row sample, fine-tuned XLM-RoBERTa scores 0.699 against 0.639 for `gpt-oss-120b` and 0.595 for `gpt-oss-20b`.
-- **The dialect model wins on Darija and loses elsewhere.** DziriBERT was pre-trained on Algerian tweets. It is the best model on Darija (0.812), and much better on Darija written in Latin letters (0.795 against 0.711 for XLM-RoBERTa). It is the weakest fine-tuned model on French (0.601) and English (0.640).
+- **Fine-tuning beats the TF-IDF baseline in every language.** The ensemble gains +0.046 on Darija, +0.179 on Arabic, +0.169 on French and +0.170 on English.
+- **It also beats zero-shot LLMs.** On the same 800-row sample, the ensemble scores 0.754 against 0.639 for `gpt-oss-120b` and 0.595 for `gpt-oss-20b` (XLM-RoBERTa base alone: 0.699).
+- **The ensemble is the main gain, not the bigger model.** XLM-RoBERTa large (560M parameters) adds only +0.011 over base (278M), and Twitter-XLM-RoBERTa base, the same size as base but further pre-trained on tweets, adds +0.013. Averaging the probabilities of the two adds another +0.015 over the better of them. The weights (0.5 / 0.5) were chosen on the validation set and applied to the test set once.
+- **The dialect model wins on Darija and loses elsewhere.** DziriBERT was pre-trained on Algerian tweets. It is the best single model on Darija (0.812), and much better on Darija written in Latin letters (0.795 against 0.711 for XLM-RoBERTa base). It is the weakest fine-tuned model on French (0.601) and English (0.640). In an ensemble with XLM-RoBERTa large it gives 0.729: the best Darija score (0.813), but lower on French than the Twitter-XLM-R pair.
 - **Neutral is the hardest class in every language.** XLM-RoBERTa finds 58% of neutral Darija comments, against 84% of negative and 91% of positive ones.
 
 ### Full test set (7,602 rows)
@@ -38,6 +42,10 @@ Mean macro-F1 over the four languages, on the test set (each language weighs the
 | XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo) | 0.774 | 0.636 | 0.706 | 0.700 | **0.704** | 0.746 | 0.763 |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.781 | 0.636 | 0.718 | 0.675 | **0.702** | 0.748 | 0.764 |
 | DziriBERT, fine-tuned | 0.812 | 0.641 | 0.601 | 0.640 | **0.674** | 0.751 | 0.766 |
+| XLM-RoBERTa large, fine-tuned | 0.787 | 0.656 | 0.714 | 0.704 | **0.715** | 0.757 | 0.775 |
+| Twitter-XLM-RoBERTa base, fine-tuned | 0.799 | 0.656 | 0.712 | 0.703 | **0.717** | 0.763 | 0.779 |
+| Ensemble: XLM-R large + DziriBERT | 0.813 | 0.671 | 0.715 | 0.719 | **0.729** | 0.776 | 0.793 |
+| Ensemble: XLM-R large + Twitter-XLM-R | 0.806 | 0.669 | 0.734 | 0.719 | **0.732** | 0.774 | 0.790 |
 
 ### Same 800-row sample the LLMs labelled (200 per language)
 
@@ -49,9 +57,13 @@ The zero-shot LLMs were run on a fixed random sample to stay inside a free API q
 | Zero-shot `gpt-oss-20b` | 0.724 | 0.593 | 0.457 | 0.607 | **0.595** |
 | Zero-shot `gpt-oss-120b` | 0.757 | 0.617 | 0.469 | 0.713 | **0.639** |
 | XLM-RoBERTa base, fine-tuned | 0.793 | 0.590 | 0.691 | 0.721 | **0.699** |
-| XLM-RoBERTa base, fine-tuned, 8-bit ONNX | 0.786 | 0.586 | 0.707 | 0.712 | **0.698** |
+| XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo) | 0.786 | 0.586 | 0.707 | 0.712 | **0.698** |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.790 | 0.596 | 0.711 | 0.737 | **0.708** |
 | DziriBERT, fine-tuned | 0.840 | 0.665 | 0.590 | 0.637 | **0.683** |
+| XLM-RoBERTa large, fine-tuned | 0.826 | 0.680 | 0.687 | 0.730 | **0.731** |
+| Twitter-XLM-RoBERTa base, fine-tuned | 0.832 | 0.652 | 0.735 | 0.733 | **0.738** |
+| Ensemble: XLM-R large + DziriBERT | 0.835 | 0.682 | 0.691 | 0.749 | **0.739** |
+| Ensemble: XLM-R large + Twitter-XLM-R | 0.844 | 0.677 | 0.733 | 0.761 | **0.754** |
 
 The LLMs used Groq's API with temperature 0 and `reasoning_effort: low`, labelling 20 texts per request. Both LLMs together used 63,000 input and 21,275 output tokens for the 800 rows. No reply was unusable.
 
@@ -61,9 +73,13 @@ The LLMs used Groq's API with temperature 0 and `reasoning_effort: low`, labelli
 | --- | --- | --- | --- |
 | TF-IDF + logistic regression | 0.760 | 0.720 | 0.843 |
 | XLM-RoBERTa base, fine-tuned | 0.788 | 0.711 | 0.850 |
-| XLM-RoBERTa base, fine-tuned, 8-bit ONNX | 0.778 | 0.709 | 0.848 |
+| XLM-RoBERTa base, fine-tuned, 8-bit ONNX (in-browser demo) | 0.778 | 0.709 | 0.848 |
 | XLM-RoBERTa base, fine-tuned, small languages x4 | 0.785 | 0.710 | 0.844 |
 | DziriBERT, fine-tuned | 0.810 | 0.795 | 0.889 |
+| XLM-RoBERTa large, fine-tuned | 0.793 | 0.716 | 0.832 |
+| Twitter-XLM-RoBERTa base, fine-tuned | 0.803 | 0.741 | 0.851 |
+| Ensemble: XLM-R large + DziriBERT | 0.815 | 0.769 | 0.844 |
+| Ensemble: XLM-R large + Twitter-XLM-R | 0.810 | 0.750 | 0.846 |
 
 12 Darija test rows contain no letters at all (emoji or punctuation only) and are not in this table.
 
@@ -73,7 +89,7 @@ Rows are the true label, columns the prediction. Each cell shows the count and t
 
 ![XLM-RoBERTa confusion matrices](results/figures/confusion-xlmr-base.png)
 
-All systems: [TF-IDF](results/figures/confusion-tfidf-logreg.png), [XLM-RoBERTa](results/figures/confusion-xlmr-base.png), [XLM-RoBERTa x4](results/figures/confusion-xlmr-base-os4.png), [DziriBERT](results/figures/confusion-dziribert.png), [gpt-oss-20b](results/figures/confusion-zeroshot-gpt-oss-20b.png), [gpt-oss-120b](results/figures/confusion-zeroshot-gpt-oss-120b.png). Per-class F1 for every system and language is in `results/metrics.json`.
+All systems: [TF-IDF](results/figures/confusion-tfidf-logreg.png), [XLM-RoBERTa](results/figures/confusion-xlmr-base.png), [XLM-RoBERTa x4](results/figures/confusion-xlmr-base-os4.png), [DziriBERT](results/figures/confusion-dziribert.png), [XLM-RoBERTa large](results/figures/confusion-xlmr-large.png), [Twitter-XLM-RoBERTa](results/figures/confusion-twitter-xlmr-base.png), [ensemble XLM-R large + Twitter-XLM-R](results/figures/confusion-ens-xlmr-large-twitter-xlmr.png), [ensemble XLM-R large + DziriBERT](results/figures/confusion-ens-xlmr-large-dziribert.png), [gpt-oss-20b](results/figures/confusion-zeroshot-gpt-oss-20b.png), [gpt-oss-120b](results/figures/confusion-zeroshot-gpt-oss-120b.png). Per-class F1 for every system and language is in `results/metrics.json`.
 
 ### Cost of running it
 
@@ -90,7 +106,9 @@ CPU only, 2 threads (the size of a free Hugging Face CPU Space), Apple M1 Pro, 2
 - **Some labels change:** on 666 of the 7,602 test rows (8.8%), the 8-bit model gives a different label from the full model. The gains and losses cancel out.
 - **In the browser:** with transformers.js 4.3.1, the labels on 71 test comments match the Python 8-bit model on 66 and the full model on 67. Classifying one comment at a time took 117 ms on average.
 
-Training on one Kaggle T4 GPU took 9.5 min for XLM-RoBERTa (278M parameters), 6.6 min for DziriBERT (124M) and 12.8 min for the oversampled XLM-RoBERTa run.
+Training on one Kaggle T4 GPU took 9.5 min for XLM-RoBERTa base (278M parameters), 28.6 min for XLM-RoBERTa large (560M), 9.7 min for Twitter-XLM-RoBERTa base (278M), 6.6 min for DziriBERT (124M) and 12.8 min for the oversampled XLM-RoBERTa run. DziriBERT was trained a second time in the second Kaggle job (to save its probabilities for the ensemble) and gave exactly the same test predictions.
+
+The ensemble runs two models per comment: 838M parameters in total against 278M for XLM-RoBERTa base. Its CPU latency was not measured, and the demos still use XLM-RoBERTa base.
 
 ## Data
 
@@ -118,8 +136,11 @@ The data is not stored in this repository. Run `make data` to rebuild it.
 | XLM-RoBERTa base, fine-tuned | [`FacebookAI/xlm-roberta-base`](https://huggingface.co/FacebookAI/xlm-roberta-base) (MIT), all weights trained. 3 epochs, learning rate 2e-5, batch 32, linear decay with 6% warmup, max 128 tokens, fp16 on GPU. |
 | XLM-RoBERTa, small languages x4 | Same settings, with the Arabic, French and English training rows repeated 4 times. Darija is 88% of the training rows otherwise. |
 | DziriBERT, fine-tuned | [`alger-ia/dziribert`](https://huggingface.co/alger-ia/dziribert) (Apache 2.0), pre-trained on 1M Algerian tweets in Arabic and Latin letters. Same settings. |
+| XLM-RoBERTa large, fine-tuned | [`FacebookAI/xlm-roberta-large`](https://huggingface.co/FacebookAI/xlm-roberta-large) (MIT). Learning rate 1e-5 (large models are less stable at 2e-5), batch 16 with 2-step accumulation (effective 32), otherwise the same settings. |
+| Twitter-XLM-RoBERTa base, fine-tuned | [`cardiffnlp/twitter-xlm-roberta-base`](https://huggingface.co/cardiffnlp/twitter-xlm-roberta-base) ([XLM-T paper](https://arxiv.org/abs/2104.12250)): XLM-RoBERTa base further pre-trained on multilingual tweets, not fine-tuned for sentiment. Its model card states no license. Same settings as XLM-RoBERTa base. |
+| Ensembles | `scripts/ensemble.py` averages the class probabilities of two fine-tuned models. The weight of each model is searched in steps of 0.1 on the validation set; the best pair is then applied to the test set once. |
 
-For every fine-tuned model, the epoch with the best validation mean-of-4 is kept. The test set is used once, at the end. Validation mean-of-4 per epoch: XLM-RoBERTa 0.659 / 0.700 / 0.711, DziriBERT 0.677 / 0.687 / 0.686.
+For every fine-tuned model, the epoch with the best validation mean-of-4 is kept. The test set is used once, at the end. Validation mean-of-4 per epoch: XLM-RoBERTa base 0.659 / 0.700 / 0.711, DziriBERT 0.677 / 0.687 / 0.686, XLM-RoBERTa large 0.709 / 0.729 / 0.743, Twitter-XLM-RoBERTa 0.697 / 0.719 / 0.720. Ensemble on validation: XLM-R large + Twitter-XLM-R 0.759, XLM-R large + DziriBERT 0.758.
 
 Every system writes `results/predictions/<name>.jsonl` (`id`, `pred`). `scripts/evaluate.py` scores them all with the same code (`dzsent/metrics.py`), and `scripts/report.py` prints the tables above from `results/metrics.json`.
 
@@ -149,6 +170,7 @@ make tfidf      # baseline                                    -> results/predict
 make xlmr       # fine-tune (about 10 min on a T4)            -> models/xlmr-base, predictions
 make dziribert
 LLM_API_KEY=... make zeroshot    # optional, uses Groq by default (LLM_BASE_URL to change)
+python scripts/ensemble.py --models xlmr-large twitter-xlmr-base --name ens-xlmr-large-twitter-xlmr
 make evaluate   # metrics.json + confusion matrices
 make latency    # CPU timing + sizes -> results/latency.json
 make report     # prints the README tables
@@ -164,7 +186,12 @@ kaggle kernels push -p build/kaggle-kernel
 kaggle kernels output <kaggle-username>/dzsentiment-train -p build/kaggle-out
 ```
 
-The job is one private script. It contains this repo's code, downloads the same pinned data, trains the three runs on one GPU, and leaves predictions and models in its output.
+The job is one private script. It contains this repo's code, downloads the same pinned data, trains the runs on one GPU, and leaves predictions, test and validation probabilities, and models in its output. The second job (large and Twitter models) was built with:
+
+```bash
+python kaggle/build_kernel.py --user <kaggle-username> --slug dzsentiment-train-v2 --out build/kaggle-kernel-v2 \
+  --models "FacebookAI/xlm-roberta-large:xlmr-large:--lr 1e-5 --batch 16 --accum 2,cardiffnlp/twitter-xlm-roberta-base:twitter-xlmr-base:,alger-ia/dziribert:dziribert:"
+```
 
 **Hosting the demo.**
 - `python scripts/export_onnx.py` writes the 8-bit model in the layout transformers.js expects (`onnx/model_quantized.onnx` next to the tokenizer files) and scores it on the test set.
@@ -190,7 +217,7 @@ CI runs them on every push.
 
 ```
 dzsent/        data loading and splitting, metrics, LLM prompt/parse, inference wrapper, ordered-eval trainer
-scripts/       prepare_data, baseline_tfidf, baseline_llm, train, evaluate, latency, export_onnx, report
+scripts/       prepare_data, baseline_tfidf, baseline_llm, train, ensemble, evaluate, latency, export_onnx, report
 app/           FastAPI demo and its single HTML page (server or in-browser model)
 kaggle/        builds the self-contained Kaggle training job
 deploy/huggingface-static/   static Space card (the hosted demo)
@@ -203,7 +230,8 @@ tests/
 
 - **The test sets are not customer-service messages.** The Darija set is YouTube comments on many topics, and the Arabic, French and English sets are tweets. The scores say how well the models follow these datasets' labels, not how they would do on a telecom or e-commerce inbox.
 - **The Arabic set is tweets from many Arab countries**, not Algerian Arabic.
-- **One training seed per model.** Differences of about 0.01 between fine-tuned models are not meaningful.
+- **One training seed per model.** Differences of about 0.01 between fine-tuned models are not meaningful; the ensemble's +0.028 over XLM-RoBERTa base is larger, but also from one seed.
+- **Twitter-XLM-RoBERTa was pre-trained on tweets from a period that may include the test tweets' text** (unlabelled). Its gain on the tweet languages could partly come from that.
 - **The LLM numbers come from 800 rows** (200 per language) and one prompt, with 20 texts per request. A different prompt or few-shot examples could change them.
 - **No language detector.** The demo uses XLM-RoBERTa for every comment. Sarcasm and comments that are both negative and positive get a single label.
 - **The hosted demo is heavy.** It uses the 8-bit model, a 279 MB first download, which is slow on mobile data. A smaller model (a trimmed vocabulary or distillation) was not tried.

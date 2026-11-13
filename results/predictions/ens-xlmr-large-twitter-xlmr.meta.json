@@ -1,0 +1,13 @@
+{
+  "system": "probability average",
+  "models": [
+    "xlmr-large",
+    "twitter-xlmr-base"
+  ],
+  "weights": [
+    0.5,
+    0.5
+  ],
+  "weights_chosen_on": "validation",
+  "validation_mean_lang_macro_f1": 0.7591
+}

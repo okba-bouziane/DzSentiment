@@ -1,0 +1,13 @@
+{
+  "system": "probability average",
+  "models": [
+    "xlmr-large",
+    "dziribert"
+  ],
+  "weights": [
+    0.6,
+    0.4
+  ],
+  "weights_chosen_on": "validation",
+  "validation_mean_lang_macro_f1": 0.7582
+}
